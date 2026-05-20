@@ -1,22 +1,25 @@
-# Gemini Omni ComfyUI Nodes
+# Google Gemini Omni ComfyUI Nodes
 
-> **ComfyUI custom nodes for Gemini Omni** — the natively multimodal any-to-any video generation model.
-> Generate, animate, and edit AI videos directly inside ComfyUI using the [muapi.ai](https://muapi.ai) API.
-> If you wish to check the API documentation see [Gemini Omni API](https://github.com/Anil-matcha/Awesome-Gemini-Omni-API-Prompts)
+> **ComfyUI custom nodes for Google Gemini Omni** — Google's natively multimodal any-to-any video generation model.
+> Generate, animate, and edit AI videos directly inside ComfyUI using the [muapi.ai](https://muapi.ai) Gemini Omni API.
+> For REST API documentation and Python examples see [Gemini Omni API](https://github.com/Anil-matcha/Awesome-Gemini-Omni-API-Prompts)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-Custom%20Node-blue)](https://github.com/comfyanonymous/ComfyUI)
-[![Gemini Omni](https://img.shields.io/badge/Model-Gemini%20Omni-green)](https://muapi.ai)
+[![Google Gemini Omni](https://img.shields.io/badge/Model-Google%20Gemini%20Omni-green)](https://muapi.ai)
+[![Google AI](https://img.shields.io/badge/Powered%20by-Google%20AI-orange)](https://muapi.ai)
 
 ---
 
-## What is Gemini Omni?
+## What is Google Gemini Omni?
 
-Gemini Omni is a natively multimodal any-to-any video generation model capable of producing high-quality videos from text, images, or existing video clips. It supports:
+**Google Gemini Omni** is Google's natively multimodal any-to-any video generation model, capable of producing high-quality videos from text, images, or existing video clips. Accessed via the [Gemini Omni API](https://muapi.ai), it supports:
 
 - **Text-to-Video** — generate video from a text description with optional AI voiceover
-- **Image-to-Video** — animate up to 7 reference images
-- **Video Edit** — restyle or transform an existing video clip with reference images
+- **Image-to-Video** — animate up to 7 reference images using the Gemini Omni image-to-video API
+- **Video Edit** — restyle or transform an existing video clip with the Gemini Omni video editing API
+
+These ComfyUI nodes wrap the Google Gemini Omni API so you can use the model directly inside ComfyUI workflows without writing any code.
 
 ---
 
@@ -24,10 +27,10 @@ Gemini Omni is a natively multimodal any-to-any video generation model capable o
 
 | Node | Description |
 |------|-------------|
-| 🔑 Gemini Omni API Key | Set your key once — wire to all nodes |
-| 🎬 Gemini Omni Text to Video | Generate video from a text prompt |
-| 🎬 Gemini Omni Image to Video | Animate up to 7 reference images |
-| 🎬 Gemini Omni Video Edit | Restyle a video clip with optional reference images |
+| 🔑 Gemini Omni API Key | Set your muapi.ai key once — wire to all nodes |
+| 🎬 Gemini Omni Text to Video | Generate video from a text prompt via Google Gemini Omni |
+| 🎬 Gemini Omni Image to Video | Animate up to 7 reference images with Gemini Omni |
+| 🎬 Gemini Omni Video Edit | Restyle a video clip with Gemini Omni video editing |
 | 💾 Gemini Omni Video Saver | Download video URL → disk + ComfyUI IMAGE frames |
 
 ---
@@ -63,13 +66,13 @@ pip install -r gemini-omni-comfyui/requirements.txt
 
 ### 🔑 Gemini Omni API Key
 
-Set your muapi.ai API key once and wire the output to all generation nodes. Alternatively, leave every `api_key` field blank — nodes automatically read from `~/.muapi/config.json` if you've authenticated via the CLI.
+Set your muapi.ai API key once and wire the output to all Gemini Omni generation nodes. Alternatively, leave every `api_key` field blank — nodes automatically read from `~/.muapi/config.json` if you've authenticated via the CLI.
 
 ---
 
 ### 🎬 Gemini Omni Text to Video
 
-Generate a video from a text description.
+Generate a video from a text description using the Google Gemini Omni text-to-video API.
 
 | Field | Values | Default |
 |-------|--------|---------|
@@ -77,7 +80,7 @@ Generate a video from a text description.
 | `prompt` | Text describing the video | — |
 | `duration` | 4 / 6 / 8 / 10 seconds | 8 |
 | `aspect_ratio` | 16:9 / 9:16 | 16:9 |
-| `audio_id` | (none) or one of 30 AI voice names | (none) |
+| `audio_id` | (none) or one of 30 Google Gemini AI voice names | (none) |
 | `seed` | -1 (random) or 0–2147483647 | -1 |
 
 **Outputs:** `video_url` (STRING) · `request_id` (STRING)
@@ -86,7 +89,7 @@ Generate a video from a text description.
 
 ### 🎬 Gemini Omni Image to Video
 
-Animate up to 7 reference images into a video.
+Animate up to 7 reference images into a video using the Google Gemini Omni image-to-video API.
 
 | Field | Values | Default |
 |-------|--------|---------|
@@ -96,7 +99,7 @@ Animate up to 7 reference images into a video.
 | `image_2` … `image_7` | Optional — additional reference images | — |
 | `duration` | 4 / 6 / 8 / 10 seconds | 8 |
 | `aspect_ratio` | 16:9 / 9:16 | 16:9 |
-| `audio_id` | (none) or one of 30 AI voice names | (none) |
+| `audio_id` | (none) or one of 30 Google Gemini AI voice names | (none) |
 | `seed` | -1 (random) or 0–2147483647 | -1 |
 
 **Outputs:** `video_url` (STRING) · `request_id` (STRING)
@@ -105,7 +108,7 @@ Animate up to 7 reference images into a video.
 
 ### 🎬 Gemini Omni Video Edit
 
-Restyle or transform a video clip. Optionally supply up to 5 reference images alongside the video (7 total slots — video uses 2, each image uses 1). At least one of `video_url` or `image_1` must be connected.
+Restyle or transform a video clip using the Google Gemini Omni video editing API. Optionally supply up to 5 reference images alongside the video (7 total slots — video uses 2, each image uses 1). At least one of `video_url` or `image_1` must be connected.
 
 | Field | Values | Default |
 |-------|--------|---------|
@@ -117,7 +120,7 @@ Restyle or transform a video clip. Optionally supply up to 5 reference images al
 | `trim_end` | 0.5 – 30.0 (seconds, max window 10s) | 8.0 |
 | `video_url` | Optional — HTTPS URL or local file path | — |
 | `image_1` … `image_5` | Optional — reference images (max 5 with video) | — |
-| `audio_id` | (none) or one of 30 AI voice names | (none) |
+| `audio_id` | (none) or one of 30 Google Gemini AI voice names | (none) |
 | `seed` | -1 (random) or 0–2147483647 | -1 |
 
 **Outputs:** `video_url` (STRING) · `request_id` (STRING)
@@ -126,11 +129,11 @@ Restyle or transform a video clip. Optionally supply up to 5 reference images al
 
 ### 💾 Gemini Omni Video Saver
 
-Download a video URL to disk and decode frames as a ComfyUI IMAGE tensor for downstream processing.
+Download a Gemini Omni output video URL to disk and decode frames as a ComfyUI IMAGE tensor for downstream processing.
 
 | Field | Values | Default |
 |-------|--------|---------|
-| `video_url` | Wire from any generation node | — |
+| `video_url` | Wire from any Gemini Omni generation node | — |
 | `prefix` | Output filename prefix | `gemini_omni` |
 | `save_subfolder` | Subfolder under `ComfyUI/output/` | `gemini_omni` |
 | `frame_load_cap` | Max frames to load (0 = all) | 0 |
@@ -143,7 +146,7 @@ Download a video URL to disk and decode frames as a ComfyUI IMAGE tensor for dow
 
 ## Audio Voices
 
-When `audio_id` is set, an AI voice narrates or accompanies the video. Available voices:
+When `audio_id` is set, a Google Gemini AI voice narrates or accompanies the generated video. Available voices:
 
 `achernar` · `achird` · `algenib` · `algieba` · `alnilam` · `aoede` · `autonoe` · `callirrhoe` · `charon` · `despina` · `enceladus` · `erinome` · `fenrir` · `gacrux` · `iapetus` · `kore` · `laomedeia` · `leda` · `orus` · `puck` · `pulcherrima` · `rasalgethi` · `sadachbia` · `sadaltager` · `schedar` · `sulafat` · `umbriel` · `vindemiatrix` · `zephyr` · `zubenelgenubi`
 
@@ -153,9 +156,17 @@ When `audio_id` is set, an AI voice narrates or accompanies the video. Available
 
 Import any of these into ComfyUI via **Load** or drag-and-drop:
 
-- [`GeminiOmni_T2V_Example.json`](workflows/GeminiOmni_T2V_Example.json) — Text to Video
-- [`GeminiOmni_I2V_Example.json`](workflows/GeminiOmni_I2V_Example.json) — Image to Video
-- [`GeminiOmni_VideoEdit_Example.json`](workflows/GeminiOmni_VideoEdit_Example.json) — Video Edit
+- [`GeminiOmni_T2V_Example.json`](workflows/GeminiOmni_T2V_Example.json) — Google Gemini Omni Text to Video
+- [`GeminiOmni_I2V_Example.json`](workflows/GeminiOmni_I2V_Example.json) — Google Gemini Omni Image to Video
+- [`GeminiOmni_VideoEdit_Example.json`](workflows/GeminiOmni_VideoEdit_Example.json) — Google Gemini Omni Video Edit
+
+---
+
+## Related
+
+- [Gemini Omni API — Python wrapper, MCP server, REST examples](https://github.com/Anil-matcha/Awesome-Gemini-Omni-API-Prompts)
+- [muapi.ai — Google Gemini Omni API access](https://muapi.ai)
+- [MuAPI CLI — run Gemini Omni from the terminal](https://github.com/SamurAIGPT/muapi-cli)
 
 ---
 
