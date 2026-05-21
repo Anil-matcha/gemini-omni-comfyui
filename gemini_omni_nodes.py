@@ -3,16 +3,18 @@ MuAPI Gemini Omni ComfyUI Nodes
 ================================
 Focused nodes for Gemini Omni video generation via muapi.ai.
 
-  GeminiOmniTextToVideo   — POST /api/v1/gemini-omni-text-to-video
-  GeminiOmniImageToVideo  — POST /api/v1/gemini-omni-image-to-video
-  GeminiOmniVideoEdit     — POST /api/v1/gemini-omni-video-edit
+  GeminiOmniTextToVideo     — POST /api/v1/gemini-omni-text-to-video
+  GeminiOmniImageToVideo    — POST /api/v1/gemini-omni-image-to-video
+  GeminiOmniVideoEdit       — POST /api/v1/gemini-omni-video-edit
+  GeminiOmniCreateAudio     — POST /api/v1/gemini-omni-audio
+  GeminiOmniCreateCharacter — POST /api/v1/gemini-omni-character
 
 Auth:     x-api-key header
 Polling:  GET /api/v1/predictions/{request_id}/result
 Upload:   POST /api/v1/upload_file
 """
 
-import io, os, time
+import io, json, os, time
 import numpy as np
 import requests
 import torch
@@ -31,6 +33,8 @@ AUDIO_IDS = [
     "vindemiatrix", "zephyr", "zubenelgenubi",
 ]
 
+RESOLUTIONS = ["720p", "1080p", "4k"]
+
 _NONE = "(none)"
 
 
@@ -44,7 +48,6 @@ def _load_api_key(api_key: str) -> str:
         return key
     cfg = os.path.expanduser("~/.muapi/config.json")
     if os.path.exists(cfg):
-        import json
         try:
             return json.load(open(cfg)).get("api_key", "")
         except Exception:
@@ -132,6 +135,16 @@ def _check(resp: requests.Response):
     resp.raise_for_status()
 
 
+def _collect_audio_ids(*ids) -> list:
+    """Collect up to 3 optional audio ID strings, filtering out _NONE and empty."""
+    return [a for a in ids if a and a != _NONE]
+
+
+def _collect_character_ids(*ids) -> list:
+    """Collect up to 3 optional character ID strings, filtering out empty values."""
+    return [c for c in ids if c and c.strip()]
+
+
 # ---------------------------------------------------------------------------
 # Node: GeminiOmniApiKey
 # ---------------------------------------------------------------------------
@@ -176,9 +189,15 @@ class GeminiOmniTextToVideo:
                 "prompt": ("STRING", {"multiline": True, "default": ""}),
                 "duration": ([4, 6, 8, 10], {"default": 8}),
                 "aspect_ratio": (["16:9", "9:16"], {"default": "16:9"}),
+                "resolution": (RESOLUTIONS, {"default": "1080p"}),
             },
             "optional": {
-                "audio_id": (AUDIO_IDS, {"default": _NONE}),
+                "audio_id_1": (AUDIO_IDS, {"default": _NONE}),
+                "audio_id_2": (AUDIO_IDS, {"default": _NONE}),
+                "audio_id_3": (AUDIO_IDS, {"default": _NONE}),
+                "character_id_1": ("STRING", {"default": ""}),
+                "character_id_2": ("STRING", {"default": ""}),
+                "character_id_3": ("STRING", {"default": ""}),
                 "seed": ("INT", {"default": -1, "min": -1, "max": 2147483647}),
             },
         }
@@ -188,14 +207,24 @@ class GeminiOmniTextToVideo:
     FUNCTION = "generate"
     CATEGORY = "MuAPI/Gemini Omni"
 
-    def generate(self, api_key, prompt, duration, aspect_ratio, audio_id=_NONE, seed=-1):
+    def generate(
+        self, api_key, prompt, duration, aspect_ratio, resolution,
+        audio_id_1=_NONE, audio_id_2=_NONE, audio_id_3=_NONE,
+        character_id_1="", character_id_2="", character_id_3="",
+        seed=-1,
+    ):
         payload = {
             "prompt": prompt,
             "duration": duration,
             "aspect_ratio": aspect_ratio,
+            "resolution": resolution,
         }
-        if audio_id and audio_id != _NONE:
-            payload["audio_ids"] = audio_id
+        audio_ids = _collect_audio_ids(audio_id_1, audio_id_2, audio_id_3)
+        if audio_ids:
+            payload["audio_ids"] = audio_ids
+        character_ids = _collect_character_ids(character_id_1, character_id_2, character_id_3)
+        if character_ids:
+            payload["character_ids"] = character_ids
         if seed >= 0:
             payload["seed"] = seed
 
@@ -209,7 +238,7 @@ class GeminiOmniTextToVideo:
 # ---------------------------------------------------------------------------
 
 class GeminiOmniImageToVideo:
-    """Animate one or more reference images with Gemini Omni (up to 7 images)."""
+    """Animate one or more reference images with Gemini Omni (up to 5 images)."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -220,15 +249,19 @@ class GeminiOmniImageToVideo:
                 "image_1": ("IMAGE",),
                 "duration": ([4, 6, 8, 10], {"default": 8}),
                 "aspect_ratio": (["16:9", "9:16"], {"default": "16:9"}),
+                "resolution": (RESOLUTIONS, {"default": "1080p"}),
             },
             "optional": {
                 "image_2": ("IMAGE",),
                 "image_3": ("IMAGE",),
                 "image_4": ("IMAGE",),
                 "image_5": ("IMAGE",),
-                "image_6": ("IMAGE",),
-                "image_7": ("IMAGE",),
-                "audio_id": (AUDIO_IDS, {"default": _NONE}),
+                "audio_id_1": (AUDIO_IDS, {"default": _NONE}),
+                "audio_id_2": (AUDIO_IDS, {"default": _NONE}),
+                "audio_id_3": (AUDIO_IDS, {"default": _NONE}),
+                "character_id_1": ("STRING", {"default": ""}),
+                "character_id_2": ("STRING", {"default": ""}),
+                "character_id_3": ("STRING", {"default": ""}),
                 "seed": ("INT", {"default": -1, "min": -1, "max": 2147483647}),
             },
         }
@@ -239,11 +272,13 @@ class GeminiOmniImageToVideo:
     CATEGORY = "MuAPI/Gemini Omni"
 
     def generate(
-        self, api_key, prompt, image_1, duration, aspect_ratio,
+        self, api_key, prompt, image_1, duration, aspect_ratio, resolution,
         image_2=None, image_3=None, image_4=None, image_5=None,
-        image_6=None, image_7=None, audio_id=_NONE, seed=-1,
+        audio_id_1=_NONE, audio_id_2=_NONE, audio_id_3=_NONE,
+        character_id_1="", character_id_2="", character_id_3="",
+        seed=-1,
     ):
-        tensors = [image_1, image_2, image_3, image_4, image_5, image_6, image_7]
+        tensors = [image_1, image_2, image_3, image_4, image_5]
         image_urls = [_upload_image(t, api_key) for t in tensors if t is not None]
 
         payload = {
@@ -251,9 +286,14 @@ class GeminiOmniImageToVideo:
             "image_urls": image_urls,
             "duration": duration,
             "aspect_ratio": aspect_ratio,
+            "resolution": resolution,
         }
-        if audio_id and audio_id != _NONE:
-            payload["audio_ids"] = audio_id
+        audio_ids = _collect_audio_ids(audio_id_1, audio_id_2, audio_id_3)
+        if audio_ids:
+            payload["audio_ids"] = audio_ids
+        character_ids = _collect_character_ids(character_id_1, character_id_2, character_id_3)
+        if character_ids:
+            payload["character_ids"] = character_ids
         if seed >= 0:
             payload["seed"] = seed
 
@@ -284,6 +324,7 @@ class GeminiOmniVideoEdit:
                 "prompt": ("STRING", {"multiline": True, "default": ""}),
                 "duration": ([4, 6, 8, 10], {"default": 8}),
                 "aspect_ratio": (["16:9", "9:16"], {"default": "16:9"}),
+                "resolution": (RESOLUTIONS, {"default": "1080p"}),
                 "trim_start": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 29.0, "step": 0.5}),
                 "trim_end": ("FLOAT", {"default": 8.0, "min": 0.5, "max": 30.0, "step": 0.5}),
             },
@@ -295,7 +336,12 @@ class GeminiOmniVideoEdit:
                 "image_3": ("IMAGE",),
                 "image_4": ("IMAGE",),
                 "image_5": ("IMAGE",),
-                "audio_id": (AUDIO_IDS, {"default": _NONE}),
+                "audio_id_1": (AUDIO_IDS, {"default": _NONE}),
+                "audio_id_2": (AUDIO_IDS, {"default": _NONE}),
+                "audio_id_3": (AUDIO_IDS, {"default": _NONE}),
+                "character_id_1": ("STRING", {"default": ""}),
+                "character_id_2": ("STRING", {"default": ""}),
+                "character_id_3": ("STRING", {"default": ""}),
                 "seed": ("INT", {"default": -1, "min": -1, "max": 2147483647}),
             },
         }
@@ -306,9 +352,12 @@ class GeminiOmniVideoEdit:
     CATEGORY = "MuAPI/Gemini Omni"
 
     def generate(
-        self, api_key, prompt, duration, aspect_ratio, trim_start, trim_end,
+        self, api_key, prompt, duration, aspect_ratio, resolution, trim_start, trim_end,
         video_url="", image_1=None, image_2=None, image_3=None, image_4=None,
-        image_5=None, audio_id=_NONE, seed=-1,
+        image_5=None,
+        audio_id_1=_NONE, audio_id_2=_NONE, audio_id_3=_NONE,
+        character_id_1="", character_id_2="", character_id_3="",
+        seed=-1,
     ):
         video_url = (video_url or "").strip()
         image_tensors = [t for t in [image_1, image_2, image_3, image_4, image_5] if t is not None]
@@ -325,6 +374,7 @@ class GeminiOmniVideoEdit:
             "prompt": prompt,
             "duration": duration,
             "aspect_ratio": aspect_ratio,
+            "resolution": resolution,
             "trim_start": trim_start,
             "trim_end": trim_end,
         }
@@ -335,14 +385,129 @@ class GeminiOmniVideoEdit:
         if image_tensors:
             payload["image_urls"] = [_upload_image(t, api_key) for t in image_tensors]
 
-        if audio_id and audio_id != _NONE:
-            payload["audio_ids"] = audio_id
+        audio_ids = _collect_audio_ids(audio_id_1, audio_id_2, audio_id_3)
+        if audio_ids:
+            payload["audio_ids"] = audio_ids
+        character_ids = _collect_character_ids(character_id_1, character_id_2, character_id_3)
+        if character_ids:
+            payload["character_ids"] = character_ids
         if seed >= 0:
             payload["seed"] = seed
 
         request_id = _submit("gemini-omni-video-edit", payload, api_key)
         out_url = _poll(request_id, api_key)
         return (out_url, request_id)
+
+
+# ---------------------------------------------------------------------------
+# Node: GeminiOmniCreateAudio
+# ---------------------------------------------------------------------------
+
+class GeminiOmniCreateAudio:
+    """Create a custom Gemini Omni audio voice profile."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "api_key": ("GEMINI_OMNI_API_KEY",),
+                "audio_id": (AUDIO_IDS, {"default": _NONE}),
+                "name": ("STRING", {"default": "", "multiline": False}),
+            },
+            "optional": {
+                "voice_description": ("STRING", {"default": "", "multiline": True}),
+                "example_dialogue": ("STRING", {"default": ""}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("kie_audio_id", "profile_name")
+    FUNCTION = "generate"
+    CATEGORY = "MuAPI/Gemini Omni"
+
+    def generate(self, api_key, audio_id, name, voice_description="", example_dialogue=""):
+        payload = {
+            "audio_id": audio_id,
+            "name": name[:210],
+        }
+        if voice_description:
+            payload["voice_description"] = voice_description
+        if example_dialogue:
+            payload["example_dialogue"] = example_dialogue
+
+        request_id = _submit("gemini-omni-audio", payload, api_key)
+        raw_output = _poll(request_id, api_key)
+
+        try:
+            data = json.loads(raw_output)
+            kie_audio_id = data.get("kieAudioId", raw_output)
+            profile_name = data.get("name", name)
+        except Exception:
+            kie_audio_id = raw_output
+            profile_name = name
+
+        return (kie_audio_id, profile_name)
+
+
+# ---------------------------------------------------------------------------
+# Node: GeminiOmniCreateCharacter
+# ---------------------------------------------------------------------------
+
+class GeminiOmniCreateCharacter:
+    """Create a Gemini Omni character from a reference image."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "api_key": ("GEMINI_OMNI_API_KEY",),
+                "image": ("IMAGE",),
+                "descriptions": ("STRING", {"multiline": True, "default": ""}),
+            },
+            "optional": {
+                "character_name": ("STRING", {"default": ""}),
+                "audio_id_1": ("STRING", {"default": ""}),
+                "audio_id_2": ("STRING", {"default": ""}),
+                "audio_id_3": ("STRING", {"default": ""}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "STRING")
+    RETURN_NAMES = ("character_id", "character_name", "character_image_url")
+    FUNCTION = "generate"
+    CATEGORY = "MuAPI/Gemini Omni"
+
+    def generate(
+        self, api_key, image, descriptions,
+        character_name="", audio_id_1="", audio_id_2="", audio_id_3="",
+    ):
+        image_url = _upload_image(image, api_key)
+
+        payload = {
+            "images_list": [image_url],
+            "descriptions": descriptions,
+        }
+        if character_name:
+            payload["character_name"] = character_name
+
+        audio_ids = _collect_character_ids(audio_id_1, audio_id_2, audio_id_3)
+        if audio_ids:
+            payload["audio_ids"] = audio_ids
+
+        request_id = _submit("gemini-omni-character", payload, api_key)
+        raw_output = _poll(request_id, api_key)
+
+        try:
+            data = json.loads(raw_output)
+            char_id = data.get("characterId", raw_output)
+            char_name = data.get("characterName", character_name)
+            char_image = data.get("image", "")
+        except Exception:
+            char_id = raw_output
+            char_name = character_name
+            char_image = ""
+
+        return (char_id, char_name, char_image)
 
 
 # ---------------------------------------------------------------------------
@@ -354,6 +519,8 @@ NODE_CLASS_MAPPINGS = {
     "GeminiOmniTextToVideo": GeminiOmniTextToVideo,
     "GeminiOmniImageToVideo": GeminiOmniImageToVideo,
     "GeminiOmniVideoEdit": GeminiOmniVideoEdit,
+    "GeminiOmniCreateAudio": GeminiOmniCreateAudio,
+    "GeminiOmniCreateCharacter": GeminiOmniCreateCharacter,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -361,4 +528,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "GeminiOmniTextToVideo": "Gemini Omni Text to Video",
     "GeminiOmniImageToVideo": "Gemini Omni Image to Video",
     "GeminiOmniVideoEdit": "Gemini Omni Video Edit",
+    "GeminiOmniCreateAudio": "Gemini Omni Create Audio Profile",
+    "GeminiOmniCreateCharacter": "Gemini Omni Create Character",
 }

@@ -16,7 +16,7 @@
 **Google Gemini Omni** is Google's natively multimodal any-to-any video generation model, capable of producing high-quality videos from text, images, or existing video clips. Accessed via the [Gemini Omni API](https://muapi.ai), it supports:
 
 - **Text-to-Video** — generate video from a text description with optional AI voiceover
-- **Image-to-Video** — animate up to 7 reference images using the Gemini Omni image-to-video API
+- **Image-to-Video** — animate up to 5 reference images using the Gemini Omni image-to-video API
 - **Video Edit** — restyle or transform an existing video clip with the Gemini Omni video editing API
 
 These ComfyUI nodes wrap the Google Gemini Omni API so you can use the model directly inside ComfyUI workflows without writing any code.
@@ -29,8 +29,10 @@ These ComfyUI nodes wrap the Google Gemini Omni API so you can use the model dir
 |------|-------------|
 | 🔑 Gemini Omni API Key | Set your muapi.ai key once — wire to all nodes |
 | 🎬 Gemini Omni Text to Video | Generate video from a text prompt via Google Gemini Omni |
-| 🎬 Gemini Omni Image to Video | Animate up to 7 reference images with Gemini Omni |
+| 🎬 Gemini Omni Image to Video | Animate up to 5 reference images with Gemini Omni |
 | 🎬 Gemini Omni Video Edit | Restyle a video clip with Gemini Omni video editing |
+| 🎤 Gemini Omni Create Audio Profile | Create a custom AI voice profile for use in generation nodes |
+| 🧑 Gemini Omni Create Character | Create a character from a reference image for use in generation nodes |
 | 💾 Gemini Omni Video Saver | Download video URL → disk + ComfyUI IMAGE frames |
 
 ---
@@ -80,7 +82,9 @@ Generate a video from a text description using the Google Gemini Omni text-to-vi
 | `prompt` | Text describing the video | — |
 | `duration` | 4 / 6 / 8 / 10 seconds | 8 |
 | `aspect_ratio` | 16:9 / 9:16 | 16:9 |
-| `audio_id` | (none) or one of 30 Google Gemini AI voice names | (none) |
+| `resolution` | 720p / 1080p / 4k | 1080p |
+| `audio_id_1` … `audio_id_3` | (none) or one of 30 Google Gemini AI voice names — up to 3 voices | (none) |
+| `character_id_1` … `character_id_3` | Optional — character IDs from Create Character node — up to 3 | — |
 | `seed` | -1 (random) or 0–2147483647 | -1 |
 
 **Outputs:** `video_url` (STRING) · `request_id` (STRING)
@@ -89,17 +93,19 @@ Generate a video from a text description using the Google Gemini Omni text-to-vi
 
 ### 🎬 Gemini Omni Image to Video
 
-Animate up to 7 reference images into a video using the Google Gemini Omni image-to-video API.
+Animate up to 5 reference images into a video using the Google Gemini Omni image-to-video API.
 
 | Field | Values | Default |
 |-------|--------|---------|
 | `api_key` | Wire from API Key node | — |
 | `prompt` | Text describing the animation | — |
 | `image_1` | Required — ComfyUI IMAGE tensor | — |
-| `image_2` … `image_7` | Optional — additional reference images | — |
+| `image_2` … `image_5` | Optional — additional reference images | — |
 | `duration` | 4 / 6 / 8 / 10 seconds | 8 |
 | `aspect_ratio` | 16:9 / 9:16 | 16:9 |
-| `audio_id` | (none) or one of 30 Google Gemini AI voice names | (none) |
+| `resolution` | 720p / 1080p / 4k | 1080p |
+| `audio_id_1` … `audio_id_3` | (none) or one of 30 Google Gemini AI voice names — up to 3 voices | (none) |
+| `character_id_1` … `character_id_3` | Optional — character IDs from Create Character node — up to 3 | — |
 | `seed` | -1 (random) or 0–2147483647 | -1 |
 
 **Outputs:** `video_url` (STRING) · `request_id` (STRING)
@@ -116,14 +122,48 @@ Restyle or transform a video clip using the Google Gemini Omni video editing API
 | `prompt` | Editing instruction | — |
 | `duration` | 4 / 6 / 8 / 10 seconds | 8 |
 | `aspect_ratio` | 16:9 / 9:16 | 16:9 |
+| `resolution` | 720p / 1080p / 4k | 1080p |
 | `trim_start` | 0.0 – 29.0 (seconds) | 0.0 |
 | `trim_end` | 0.5 – 30.0 (seconds, max window 10s) | 8.0 |
 | `video_url` | Optional — HTTPS URL or local file path | — |
 | `image_1` … `image_5` | Optional — reference images (max 5 with video) | — |
-| `audio_id` | (none) or one of 30 Google Gemini AI voice names | (none) |
+| `audio_id_1` … `audio_id_3` | (none) or one of 30 Google Gemini AI voice names — up to 3 voices | (none) |
+| `character_id_1` … `character_id_3` | Optional — character IDs from Create Character node — up to 3 | — |
 | `seed` | -1 (random) or 0–2147483647 | -1 |
 
 **Outputs:** `video_url` (STRING) · `request_id` (STRING)
+
+---
+
+### 🎤 Gemini Omni Create Audio Profile
+
+Create a custom Gemini Omni AI voice profile. The resulting `kie_audio_id` can be passed into the `audio_id_1` … `audio_id_3` fields of the generation nodes.
+
+| Field | Values | Default |
+|-------|--------|---------|
+| `api_key` | Wire from API Key node | — |
+| `audio_id` | One of 30 Google Gemini AI voice names (base voice to customise) | — |
+| `name` | Profile display name (max 210 characters) | — |
+| `voice_description` | Optional — text description of the voice style | — |
+| `example_dialogue` | Optional — example speech for the voice | — |
+
+**Outputs:** `kie_audio_id` (STRING) · `profile_name` (STRING)
+
+---
+
+### 🧑 Gemini Omni Create Character
+
+Create a Gemini Omni character from a reference image. The resulting `character_id` can be passed into the `character_id_1` … `character_id_3` fields of the generation nodes.
+
+| Field | Values | Default |
+|-------|--------|---------|
+| `api_key` | Wire from API Key node | — |
+| `image` | ComfyUI IMAGE tensor — reference image for the character | — |
+| `descriptions` | Text description of the character | — |
+| `character_name` | Optional — display name for the character | — |
+| `audio_id_1` … `audio_id_3` | Optional — voice IDs to associate with this character | — |
+
+**Outputs:** `character_id` (STRING) · `character_name` (STRING) · `character_image_url` (STRING)
 
 ---
 
